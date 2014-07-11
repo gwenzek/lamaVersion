@@ -19,6 +19,6 @@ object EasyIO{
         }
     }
 
-    def listExtension(dir: String, ext: String) = 
+    def listExtensions(dir: String, ext: String) = 
         new File(dir).list().filter(_.endsWith("." + ext)).toIterator.map(dir + '/' + _)
 }

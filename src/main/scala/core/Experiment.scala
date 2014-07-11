@@ -4,7 +4,6 @@ package com.lamaVersion.core
 import scala.sys.process._
 import java.io.File
 import scala.io.Source
-import impl.EasyIO.WriteAndClose
 
 
 object Command{
@@ -15,14 +14,23 @@ object Command{
 class Experiment(val name: String, val command: ProcessBuilder, val outputs: Seq[String] = Nil){
 
     def execute() = {
-        name + ".out" <<| command.lineStream
+        command #>> new File(name + ".out") ! 
     } 
 
     def success() = command.! == 0
+
+    def extractResultsTo(workingPath: String, outputPath: String, ext: String){
+        for(file <- outputs){
+            val splitted = file.split(".")
+            new File(workingPath + '/' + file) #> 
+                new File(outputPath + '/' + splitted(0) + '_' + ext + '.' + splitted(1)) !
+        }
+    }
 }
 
 object Experiment{
-    def fromFile(file: String) = {
+    def fromFile(file: String, cwd: String = ".") = {
+        val workingDir = new File(cwd)
         val in = Source.fromFile(file)
         val lines = in.getLines.toList
         val name = lines.head.substring(1)
@@ -31,8 +39,8 @@ object Experiment{
         val commands = lines filterNot(_.startsWith("#"))
 
         def toProcessBuilder(commands: List[String]): ProcessBuilder = commands match {
-            case a :: b :: l => a ### toProcessBuilder(b :: l)
-            case a :: Nil => a
+            case a :: b :: l => Process(a, workingDir) ### toProcessBuilder(b :: l)
+            case a :: Nil => Process(a, workingDir)
             case Nil => ""
         }
 
