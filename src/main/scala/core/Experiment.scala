@@ -5,11 +5,10 @@ import scala.sys.process._
 import java.io.File
 import scala.io.Source
 import impl.EasyIO.WriteAndClose
-import scala.annotation.tailrec
 
 
 object Command{
-    def fileExist(name: String) : ProcessBuilder = Seq("test", "-f", name)
+    def fileExist(name: String) : Boolean = Seq("test", "-f", name).! == 0
     def mkdir(dir: String) = Seq("mkdir", dir)
 }
 

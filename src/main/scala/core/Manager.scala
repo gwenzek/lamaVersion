@@ -3,14 +3,14 @@ package com.lamaVersion.core
 import scala.sys.process._
 import org.joda.time.DateTime
 import org.joda.time.format._
-
+import java.io.File
 
 case class Commit(hash: String, date: DateTime){
     def shortHash() = hash.substring(0, 6)
 }
 
 object Commit{
-    def apply(it: Iterator[String]): Iterator[Commit] = {
+    def fromStrings(it: Iterator[String]): Iterator[Commit] = {
         def readCommitHash(line: String) = {
             if(line.startsWith("commit ")) Some(line.split(" ")(1))
             else None
@@ -38,12 +38,33 @@ object Commit{
     val gitDateFormat = DateTimeFormat.forPattern("EEE MMM dd HH:mm:ss yyyy Z")
 }
 
-class Manager(gitPath: String, experimentPath: String, resultPath: String) {
+object Manager extends App {
 
-    val repository = Seq("cd", gitPath) ### "git config --get remote.origin.url" !!
-
-    val commits = Commit( (Seq("cd", gitPath) ### "git log").lines.toIterator )
-
+    val manager = new Manager("results/", "experiments", "results")
+    println(manager.repository)
+    manager.commits.foreach(println)
 
 }
+
+class Manager(gitPath: String, experimentPath: String, resultPath: String) {
+    val gitDir = new File(gitPath)
+    val resultDir = new File(resultPath)
+    val repository = Process("git config --get remote.origin.url", gitDir).!!
+    val repName = repository.split("/").last.split(".")(0)
+    val commits = Commit.fromStrings( Process("git log", gitDir).lineStream.toIterator )
+    val workingDir = resultPath + '/' + repName
+
+    def pull(){
+        if(Command.fileExist(workingDir))
+            Process( Seq("git", "pull"), resultDir ).!
+        else
+            Process( Seq("git", "clone", repository), resultDir ).!
+    }
+
+    def switchBranch(hash: String){
+        
+    }
+}
+
+
 

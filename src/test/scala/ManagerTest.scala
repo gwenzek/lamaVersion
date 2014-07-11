@@ -22,11 +22,11 @@ class ManagerTest extends FunSuite {
         import org.joda.time.{DateTime, DateTimeZone}
         
 
-        val commits = Commit(it).toArray
+        val commits = Commit.fromStrings(it).toArray
         assert(commits(0) == Commit("4d5e34ee835c6c236dd2916971de99e675dd9616", 
                                     new DateTime(2014, 7, 10, 18, 10, 20)))
 
-        val secondCommit = Commit(it)
+        val secondCommit = Commit.fromStrings(it)
         assert(commits(1) == Commit("cbd6d65ebaca3d9ac02fa6a7e113e61e6fe858ee", 
                                     new DateTime(2014, 7, 10, 18, 7, 7)))
     }

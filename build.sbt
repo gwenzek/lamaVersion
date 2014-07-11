@@ -10,3 +10,5 @@ libraryDependencies ++= Seq(
     "joda-time" % "joda-time" % "2.3",
     "org.joda" % "joda-convert" % "1.2"
 )
+
+scalacOptions ++= Seq("-deprecation")
