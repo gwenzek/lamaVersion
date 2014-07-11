@@ -11,6 +11,6 @@ libraryDependencies ++= Seq(
     "org.joda" % "joda-convert" % "1.2"
 )
 
-scalacOptions ++= Seq("-deprecation", "-features")
+scalacOptions ++= Seq("-deprecation", "-feature")
 
-mainClass := com.lamaVersion.core.Manager
+mainClass := Some("com.lamaVersion.core.Manager")

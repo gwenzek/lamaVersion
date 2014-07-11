@@ -5,13 +5,6 @@ import scala.sys.process._
 
 
 class ExperimentTest extends FunSuite {
-    test("fileExist works"){ assert(Command.fileExist("README.md")) }
-
-    test("when running an experiment a dump file is created") {
-        val exp = new Experiment("ls", "ls")
-        exp.execute()
-        assert(Command.fileExist("ls.out"))
-    }
 
     ignore("the experiment parser works correctly") {
         val exp = new Experiment("test", "ls" ### "git log")

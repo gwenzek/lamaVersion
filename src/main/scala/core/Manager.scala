@@ -38,16 +38,16 @@ object Commit{
         (for(s <- it) yield readOne(s)) filter(_ != None) map(_.get)
     }
 
-    protected val gitDateFormat = DateTimeFormat.forPattern("EEE MMM dd HH:mm:ss yyyy Z")
-    protected val simpleFormat = DateTimeFormat.forPattern("yyyy_mm_dd_HH_mm_ss")
+    val gitDateFormat = DateTimeFormat.forPattern("EEE MMM dd HH:mm:ss yyyy Z")
+    val simpleFormat = DateTimeFormat.forPattern("yyyy_mm_dd_HH_mm_ss")
 }
 
 object Manager {
     def main(args: Array[String]) {
+
         if (args.length < 3) println("Expect : gitPath experimentPath resultPath")
         else{
             val manager = new Manager(args(0), args(1), args(2))
-            println(manager.repository)
             manager.executeAll
         }
     }
@@ -56,44 +56,55 @@ object Manager {
 class Manager(gitPath: String, experimentPath: String, resultPath: String) {
     val gitDir = new File(gitPath)
     val resultDir = new File(resultPath)
-    
+
     val repository = Process("git config --get remote.origin.url", gitDir).!!
-    val repName = repository.split("/").last.split(".")(0)
-    val commits = Commit.fromStrings( Process("git log", gitDir).lineStream.toIterator )
+    println("[" + repository + "]")
+
+    val repName = repository.split("/|\n").last
+    println(repName)
+
+    val commits = Commit.fromStrings( Process("git log", gitDir).lineStream.toIterator ).toStream
     
     val workingPath = resultPath + '/' + repName
+    println(workingPath)
     val workingDir = new File(workingPath)
 
     def pull(){
-        if(Command.fileExist(workingPath))
-            Process( Seq("git", "pull"), resultDir ).!
-        else
+        if(new File(workingPath).exists){
+            println("pulling ...")
+            Process( Seq("git", "pull"), workingDir ).!
+        } else {
+            println("cloning ...")
             Process( Seq("git", "clone", repository), resultDir ).!
+        }
     }
 
     def switchBranch(hash: String){
-        Process( Seq("git", "reset", "--hard", hash), workingDir ) !
+        Process( Seq("git", "reset", "--hard", hash), workingDir ).!
     }
 
     def switchToHead(){
-        Process( Seq("git", "reset", "--hard", "master"), workingDir ) !
+        Process( Seq("git", "reset", "--hard", "master"), workingDir ).!
     }
 
-    def executeOnCommit(expFile: String, commit: Commit){
-        val exp = Experiment.fromFile(expFile, workingPath)
-        switchBranch(commit.hash)
-        val outputPath = resultPath + '/' + exp.name
-        Seq("mkdir", outputPath).!!
-        exp.command #> new File(outputPath + "/std_" + commit.toShortString + ".out")
-        exp.extractResultsTo(workingPath, outputPath, commit.toShortString)
+    def executeOnCommit(exp: Experiment, commit: Commit){
+        if(exp.accept(commit)){
+            println(commit)
+            // switchBranch(commit.hash)
+            // val outputPath = resultPath + '/' + exp.name
+            // if(!new File(outputPath).exists) Seq("mkdir", outputPath).!
+            // exp.execute(outputPath + "/std_" + commit.toShortString + ".out")
+            // exp.extractResultsTo(workingPath, outputPath, commit.toShortString)
+        }
     }
 
     def executeAll(){
         pull()
         for(expFile <- listExtensions(experimentPath, "sh")){
+            val exp = Experiment.fromFile(expFile, workingPath)
+            println("Experiment : "+exp.name)
             for(c <- commits){
-                println(c)
-                executeOnCommit(expFile, c)
+                executeOnCommit(exp, c)
             }
         }
         switchToHead
