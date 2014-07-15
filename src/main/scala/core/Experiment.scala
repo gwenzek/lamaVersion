@@ -5,7 +5,7 @@ import scala.sys.process._
 import java.io.File
 import scala.io.Source
 import scala.language.postfixOps
-import impl.EasyIO
+import com.lamaVersion.impl.EasyIO
 
 
 object Command{

@@ -4,7 +4,7 @@ import scala.sys.process._
 import org.joda.time.DateTime
 import org.joda.time.format._
 import java.io.File
-import impl.EasyIO._
+import com.lamaVersion.impl.EasyIO._
 
 
 case class Commit(hash: String, date: DateTime){
@@ -45,17 +45,17 @@ object Commit{
 
 object Manager {
     def main(args: Array[String]) {
-        args.map(println)
         if (args.length < 3) println("Expect : gitPath experimentPath resultPath")
         else{
             val manager = new Manager(args(0), args(1), args(2))
-            manager.executeAll
+            manager.executeAll()
         }
     }
 }
 
 class Manager(gitPath: String, experimentPath: String, resultPath: String) {
     val gitDir = new File(gitPath)
+    insureDirExists(resultPath)
     val resultDir = new File(resultPath)
 
     val repository = Process("git config --get remote.origin.url", gitDir).!!
@@ -66,7 +66,6 @@ class Manager(gitPath: String, experimentPath: String, resultPath: String) {
     val commits = Commit.fromStrings( Process("git log", gitDir).lineStream.toIterator ).toStream
     
     val workingPath = resultPath + '/' + repName
-
     val workingDir = new File(workingPath)
 
     def pull(){
@@ -87,25 +86,29 @@ class Manager(gitPath: String, experimentPath: String, resultPath: String) {
         Process( Seq("git", "reset", "--hard", "master"), workingDir ).!
     }
 
-    def executeOnCommit(exp: Experiment, commit: Commit){
-        if(exp.accept(commit)){
-            switchBranch(commit.hash)
-            println("switched to : " + commit)
-            val outputPath = resultPath + '/' + exp.name
-            insureDirExists(outputPath)
-            exp.execute(outputPath + "/std_" + commit.toShortString + ".out")
-            exp.extractResultsTo(workingPath, outputPath, commit.toShortString)
+    def executeOnCommit(exp: Experiment, commit: Commit, lazylazy: Boolean = true){
+        val outputPath = resultPath + '/' + exp.name
+        insureDirExists(outputPath)
+        val stdoutDump = outputPath + "/std_" + commit.toShortString + ".out"
+        if(!(fileExists(stdoutDump) && lazylazy)) {
+            if(exp.accept(commit)){
+                switchBranch(commit.hash)
+                println("switched to : " + commit)
+                exp.execute(stdoutDump)
+                exp.extractResultsTo(workingPath, outputPath, commit.toShortString)
+            }
         }
     }
 
-    def executeAll(){
+    def executeAll(lazylazy: Boolean = true){
         pull()
-        insureDirExists(experimentPath)
+        if(!fileExists(experimentPath)) throw new java.io.FileNotFoundException(experimentPath)
+
         for(expFile <- listExtensions(experimentPath, "sh")){
             val exp = Experiment.fromFile(expFile, workingPath)
             println("Experiment : "+exp.name + " -> " + exp.command)
             for(c <- commits){
-                executeOnCommit(exp, c)
+                executeOnCommit(exp, c, lazylazy)
             }
         }
         switchToHead
