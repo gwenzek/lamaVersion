@@ -40,10 +40,8 @@ class EasyIOTest extends FunSuite {
     }
 
     test("the ArgOps parser doesn't return nulls"){
-        val argOps1 = parser <<| Array("-someInt", "3", "-someFlag", "-someWord", "goodbye", "arg0", "arg1", "arg2")
-        assert(argOps1.args(0) == "arg0")
-        assert(argOps1.args(1) == "arg1")
-        assert(argOps1.args(2) == "arg2")
+        val argOps1 = parser <<| Array("-someInt", "3", "-someFlag", "-someWord", "goodbye")
+        assert(argOps1.args.length == 0)
     }
 
 }
