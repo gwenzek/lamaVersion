@@ -4,7 +4,8 @@ import scala.sys.process._
 import org.joda.time.DateTime
 import org.joda.time.format._
 import java.io.File
-import impl.EasyIO.listExtensions
+import impl.EasyIO._
+
 
 case class Commit(hash: String, date: DateTime){
     def shortHash() = hash.substring(0, 8)
@@ -89,12 +90,12 @@ class Manager(gitPath: String, experimentPath: String, resultPath: String) {
 
     def executeOnCommit(exp: Experiment, commit: Commit){
         if(exp.accept(commit)){
-            println(commit)
-            // switchBranch(commit.hash)
-            // val outputPath = resultPath + '/' + exp.name
-            // if(!new File(outputPath).exists) Seq("mkdir", outputPath).!
-            // exp.execute(outputPath + "/std_" + commit.toShortString + ".out")
-            // exp.extractResultsTo(workingPath, outputPath, commit.toShortString)
+            switchBranch(commit.hash)
+            println("switched to : " + commit)
+            val outputPath = resultPath + '/' + exp.name
+            insureDirExists(outputPath)
+            exp.execute(outputPath + "/std_" + commit.toShortString + ".out")
+            exp.extractResultsTo(workingPath, outputPath, commit.toShortString)
         }
     }
 
@@ -102,7 +103,7 @@ class Manager(gitPath: String, experimentPath: String, resultPath: String) {
         pull()
         for(expFile <- listExtensions(experimentPath, "sh")){
             val exp = Experiment.fromFile(expFile, workingPath)
-            println("Experiment : "+exp.name)
+            println("Experiment : "+exp.name + " -> " + exp.command)
             for(c <- commits){
                 executeOnCommit(exp, c)
             }

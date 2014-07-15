@@ -11,12 +11,17 @@ object Command{
     def mkdir(dir: String) = Seq("mkdir", dir)
 }
 
-class Experiment(val name: String, val command: ProcessBuilder,
-    val accept: Commit => Boolean = _ => false, val outputs: Seq[String] = Nil){
+class Experiment(val name: String,
+                 val command: ProcessBuilder,
+                 val accept: Commit => Boolean = _ => false, 
+                 val outputs: Seq[String] = Nil){
 
-    def execute(filename: String) = {
-        command #>> new File(filename) ! 
-    } 
+    def execute(output: String) = {
+        if(command.toString != "[]")
+            command #>> new File(output) !
+        else
+            println("Empty experiment can't be executed")
+    }
 
     def success() = command.! == 0
 
@@ -31,46 +36,47 @@ class Experiment(val name: String, val command: ProcessBuilder,
 }
 
 object Experiment{
-    def fromFile(file: String, cwd: String = ".") = {
+
+    def fromStream(lines: Stream[String], cwd: String = ".") = {
         val workingDir = new File(cwd)
-        val in = Source.fromFile(file)
-        val lines = in.getLines.toList
-        val name = lines.head.substring(1)
+
+        val name = lines find(_.startsWith("# NAME: ")) getOrElse("# NAME: --unnamed--") substring(8)
         
-        val outputs = lines filter(_.startsWith("# prints in: ")) map(_.substring(1))
-        val commands = lines filterNot(_.startsWith("#"))
         val beginDate = lines.find(_.startsWith("# BEGIN: ")).map( (line: String) => 
                 Commit.gitDateFormat.parseDateTime(line.substring(9)))
         val endDate = lines.find(_.startsWith("# END: ")).map( (line: String) => 
                 Commit.gitDateFormat.parseDateTime(line.substring(7)))
+        
+        val commands = lines filterNot((l: String) => l.startsWith("#") || l == "")
+
+        val outputs = lines filter(_.startsWith("# GET: ")) flatMap(_.substring(7).split(" "))
+
+        (beginDate, endDate) match {
+            case (None, None) => println("No filtering: accepting all")
+            case (Some(begin), None) => println("Filtering dates after : " + beginDate)
+            case (None, Some(end)) => println("Filtering dates before : " + endDate)
+            case (Some(begin), Some(end)) => println("Filtering dates after : " + beginDate 
+                                                    + ", and before : " + endDate)
+        }
 
         def check(c: Commit) = (beginDate, endDate) match {
-            case (None, None) => false
+            case (None, None) => true
             case (Some(begin), None) => c.date.isAfter(begin)
             case (None, Some(end)) => c.date.isBefore(end)
             case (Some(begin), Some(end)) => c.date.isAfter(begin) && c.date.isBefore(end)
         }
 
-        def toProcessBuilder(commands: List[String]): ProcessBuilder = commands match {
-            case a :: b :: l => Process(a, workingDir) ### toProcessBuilder(b :: l)
-            case a :: Nil => Process(a, workingDir)
-            case Nil => ""
+        def toProcessBuilder(commands: Stream[String]): ProcessBuilder = commands match {
+            case a #:: b #:: l => Process(a, workingDir) ### toProcessBuilder(b #:: l)
+            case a #:: Stream.Empty => Process(a, workingDir)
+            case Stream.Empty => ""
         }
 
         new Experiment(name, toProcessBuilder(commands), check, outputs)
     }
 
-    def processFromFile(file: String) = {
-        val in = Source.fromFile(file)
-        val lines = in.getLines
-        val commands = lines filterNot(_.startsWith("#"))
-
-        def toProcessBuilder(commands: List[String]): ProcessBuilder = commands match {
-            case a :: b :: l => a ### toProcessBuilder(b :: l)
-            case a :: Nil => a
-            case Nil => ""
-        }
-
-        toProcessBuilder(commands.toList)
+    def fromFile(file: String, cwd: String = ".") = {
+        val lines = Source.fromFile(file).getLines.toStream
+        fromStream(lines, cwd)
     }
 }

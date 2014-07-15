@@ -21,4 +21,10 @@ object EasyIO{
 
     def listExtensions(dir: String, ext: String) = 
         new File(dir).list().filter(_.endsWith("." + ext)).toIterator.map(dir + '/' + _)
+
+    def fileExists(file: String) = new File(file).exists
+
+    def insureDirExists(dir: String) =
+        if(!fileExists(dir))
+            scala.sys.process.Process(Seq("mkdir", dir)).!
 }
