@@ -5,6 +5,7 @@ import scala.sys.process._
 import java.io.File
 import scala.io.Source
 import scala.language.postfixOps
+import impl.EasyIO
 
 
 object Command{
@@ -37,11 +38,9 @@ class Experiment(val name: String,
 
 object Experiment{
 
-    def fromStream(lines: Stream[String], cwd: String = ".") = {
+    def fromStream(lines: Stream[String], name: String, cwd: String = ".") = {
         val workingDir = new File(cwd)
 
-        val name = lines find(_.startsWith("# NAME: ")) getOrElse("# NAME: --unnamed--") substring(8)
-        
         val beginDate = lines.find(_.startsWith("# BEGIN: ")).map( (line: String) => 
                 Commit.gitDateFormat.parseDateTime(line.substring(9)))
         val endDate = lines.find(_.startsWith("# END: ")).map( (line: String) => 
@@ -51,19 +50,13 @@ object Experiment{
 
         val outputs = lines filter(_.startsWith("# GET: ")) flatMap(_.substring(7).split(" "))
 
-        (beginDate, endDate) match {
-            case (None, None) => println("No filtering: accepting all")
-            case (Some(begin), None) => println("Filtering dates after : " + beginDate)
-            case (None, Some(end)) => println("Filtering dates before : " + endDate)
-            case (Some(begin), Some(end)) => println("Filtering dates after : " + beginDate 
-                                                    + ", and before : " + endDate)
-        }
+        val excluded = lines filter(_.startsWith("# EXCLUDE: ")) flatMap(_.substring(11).split(" "))
 
-        def check(c: Commit) = (beginDate, endDate) match {
-            case (None, None) => true
-            case (Some(begin), None) => c.date.isAfter(begin)
-            case (None, Some(end)) => c.date.isBefore(end)
-            case (Some(begin), Some(end)) => c.date.isAfter(begin) && c.date.isBefore(end)
+        def accept(c: Commit) =  {
+            val afterBegin = beginDate.map(begin => c.date.isAfter(begin) || c.date.isEqual(begin))
+            val beforeEnd = endDate.map(end => c.date.isBefore(end) || c.date.isEqual(end))
+            val isExcluded = excluded.contains(c.hash) || excluded.contains(c.shortHash)
+            afterBegin.getOrElse(true) && beforeEnd.getOrElse(true) && !isExcluded
         }
 
         def toProcessBuilder(commands: Stream[String]): ProcessBuilder = commands match {
@@ -72,11 +65,11 @@ object Experiment{
             case Stream.Empty => ""
         }
 
-        new Experiment(name, toProcessBuilder(commands), check, outputs)
+        new Experiment(name, toProcessBuilder(commands), accept, outputs)
     }
 
     def fromFile(file: String, cwd: String = ".") = {
         val lines = Source.fromFile(file).getLines.toStream
-        fromStream(lines, cwd)
+        fromStream(lines, EasyIO.getShortFileName(file), cwd)
     }
 }

@@ -27,4 +27,6 @@ object EasyIO{
     def insureDirExists(dir: String) =
         if(!fileExists(dir))
             scala.sys.process.Process(Seq("mkdir", dir)).!
+
+    def getShortFileName(file: String) = file.split("/").last.split("\\.")(0)
 }
