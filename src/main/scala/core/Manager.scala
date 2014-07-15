@@ -45,7 +45,7 @@ object Commit{
 
 object Manager {
     def main(args: Array[String]) {
-
+        args.map(println)
         if (args.length < 3) println("Expect : gitPath experimentPath resultPath")
         else{
             val manager = new Manager(args(0), args(1), args(2))
@@ -59,23 +59,22 @@ class Manager(gitPath: String, experimentPath: String, resultPath: String) {
     val resultDir = new File(resultPath)
 
     val repository = Process("git config --get remote.origin.url", gitDir).!!
-    println("[" + repository + "]")
 
     val repName = repository.split("/|\n").last
-    println(repName)
+    println("Working with git repository : " + repName)
 
     val commits = Commit.fromStrings( Process("git log", gitDir).lineStream.toIterator ).toStream
     
     val workingPath = resultPath + '/' + repName
-    println(workingPath)
+
     val workingDir = new File(workingPath)
 
     def pull(){
         if(new File(workingPath).exists){
-            println("pulling ...")
+            println("pulling " + repName + " into " + workingPath)
             Process( Seq("git", "pull"), workingDir ).!
         } else {
-            println("cloning ...")
+            println("cloning " + repName + " into " + resultPath)
             Process( Seq("git", "clone", repository), resultDir ).!
         }
     }
@@ -101,6 +100,7 @@ class Manager(gitPath: String, experimentPath: String, resultPath: String) {
 
     def executeAll(){
         pull()
+        insureDirExists(experimentPath)
         for(expFile <- listExtensions(experimentPath, "sh")){
             val exp = Experiment.fromFile(expFile, workingPath)
             println("Experiment : "+exp.name + " -> " + exp.command)
