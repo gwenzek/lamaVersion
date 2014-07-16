@@ -21,7 +21,7 @@ class OptionalParam(val name: String) {
         case FlagParam(_, _) => 1
     }
 
-    def toPair() = name -> this
+    def toPairs() = name.split("\\|").map( _ -> this )
 }
 
 sealed case class IntParam(override val name: String, val value: Int) extends OptionalParam(name)
@@ -34,36 +34,35 @@ object ArgsOps {
     case class UnknownParam(name: String) extends Exception
 
     class ArgsOpsParser(default: Map[String, OptionalParam]){
-        
+
         def parse(args: Array[String]) = {
 
             def parseOne(i: Int, l: List[OptionalParam]): (Int, List[OptionalParam]) = {
                 if(i == args.length || args(i)(0) != '-') (i, l)
                 else{
-                    val name = args(i).substring(1)
-                    if(!default.contains(name)) throw UnknownParam(name)
-                    if(i + default(name).length > args.length) throw OptionWithoutExpectedParam(name)
-                    val op : OptionalParam = default(name) match {
-                        case _ : IntParam => try { name -> args(i+1).toInt } catch
-                            {case e: java.lang.NumberFormatException => throw OptionWithoutExpectedParam(name)}
+                    val partialName = args(i)
+                    val op = default.getOrElse(partialName, throw UnknownParam(partialName))
+                    if(i + op.length > args.length) throw OptionWithoutExpectedParam(op.name)
+                    val received : OptionalParam = op match {
+                        case _ : IntParam => try { op.name -> args(i+1).toInt } catch
+                            {case e: java.lang.NumberFormatException => throw OptionWithoutExpectedParam(op.name)}
                         case _ : StringParam => 
-                            if(args(i+1)(0) == '-') throw OptionWithoutExpectedParam(name)
-                            else name -> args(i+1)
-                        case _ : FlagParam => FlagParam(name, true)
+                            if(args(i+1)(0) == '-') throw OptionWithoutExpectedParam(op.name)
+                            else op.name -> args(i+1)
+                        case _ : FlagParam => FlagParam(op.name, true)
                     }
-                    parseOne(i+op.length, op :: l)
+                    parseOne(i+op.length, received :: l)
                 }
             }
-
             val (i, l) = parseOne(0, Nil)
-            new ArgsOps(default ++ l.map(_.toPair).toMap, args.slice(i, args.length))
+            new ArgsOps(default ++ l.flatMap(_.toPairs).toMap, args.slice(i, args.length))
         }
 
         def <<|(args: Array[String]) = parse(args)
     }
 
     object ArgsOpsParser {
-        def apply(ops: OptionalParam*) = new ArgsOpsParser(ops.map(_.toPair).toMap)
+        def apply(ops: OptionalParam*) = new ArgsOpsParser(ops.flatMap(_.toPairs).toMap)
     }
 
     implicit def asInt(op: OptionalParam) = op match { case IntParam(_, i) => i }
