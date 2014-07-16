@@ -7,7 +7,7 @@ import scala.sys.process._
 
 class ExperimentTest extends FunSuite {
 
-    val expLoaded = Experiment.fromFile("src/test/resources/test.sh")
+    val expLoaded = Experiment.fromFile(new java.io.File("src/test/resources/test.sh"))
     
     test("the experiment gets the correct name") {
         assert(expLoaded.name == "test")

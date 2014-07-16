@@ -47,33 +47,32 @@ object Manager {
     def main(args: Array[String]) {
         if (args.length < 3) println("Expect : gitPath experimentPath resultPath")
         else{
-            val manager = new Manager(args(0), args(1), args(2))
+            val manager = new Manager(new File(args(0)), new File(args(1)), new File(args(2)))
             manager.executeAll()
         }
     }
+
+    val sep = System.getProperty("path.separator")
 }
 
-class Manager(gitPath: String, experimentPath: String, resultPath: String) {
-    val gitDir = new File(gitPath)
-    insureDirExists(resultPath)
-    val resultDir = new File(resultPath)
-
+class Manager(gitDir: File, val experimentDir: File, val resultDir: File) {
+    
+    insureDirExists(resultDir)
+    
     val repository = Process("git config --get remote.origin.url", gitDir).!!
-
-    val repName = repository.split("/|\n").last
+    val repName = repository.split("/|\r|\n").last
     println("Working with git repository : " + repName)
 
     val commits = Commit.fromStrings( Process("git log", gitDir).lineStream.toIterator ).toStream
     
-    val workingPath = resultPath + '/' + repName
-    val workingDir = new File(workingPath)
+    val workingDir = new File(resultDir, repName)
 
     def pull(){
-        if(new File(workingPath).exists){
-            println("pulling " + repName + " into " + workingPath)
+        if(workingDir.exists){
+            println("pulling " + repName + " into " + workingDir)
             Process( Seq("git", "pull"), workingDir ).!
         } else {
-            println("cloning " + repName + " into " + resultPath)
+            println("cloning " + repName + " into " + resultDir)
             Process( Seq("git", "clone", repository), resultDir ).!
         }
     }
@@ -87,25 +86,25 @@ class Manager(gitPath: String, experimentPath: String, resultPath: String) {
     }
 
     def executeOnCommit(exp: Experiment, commit: Commit, lazylazy: Boolean = true){
-        val outputPath = resultPath + '/' + exp.name
-        insureDirExists(outputPath)
-        val stdoutDump = outputPath + "/std_" + commit.toShortString + ".out"
-        if(!(fileExists(stdoutDump) && lazylazy)) {
+        val outputDir = new File(resultDir, exp.name)
+        insureDirExists(outputDir)
+        val stdoutDump = new File(outputDir,  "std_" + commit.toShortString + ".out")
+        if(!(stdoutDump.exists && lazylazy)) {
             if(exp.accept(commit)){
                 switchBranch(commit.hash)
                 println("switched to : " + commit)
                 exp.execute(stdoutDump)
-                exp.extractResultsTo(workingPath, outputPath, commit.toShortString)
+                exp.extractResultsTo(workingDir, outputDir, commit.toShortString)
             }
         }
     }
 
     def executeAll(lazylazy: Boolean = true){
         pull()
-        if(!fileExists(experimentPath)) throw new java.io.FileNotFoundException(experimentPath)
+        if(!experimentDir.exists) throw new java.io.FileNotFoundException(experimentDir.getPath)
 
-        for(expFile <- listExtensions(experimentPath, "sh")){
-            val exp = Experiment.fromFile(expFile, workingPath)
+        for(expFile <- listExtensions(experimentDir, "sh")){
+            val exp = Experiment.fromFile(expFile, workingDir.getPath)
             println("Experiment : "+exp.name + " -> " + exp.command)
             for(c <- commits){
                 executeOnCommit(exp, c, lazylazy)

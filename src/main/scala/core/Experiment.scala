@@ -17,21 +17,21 @@ class Experiment(val name: String,
                  val accept: Commit => Boolean = _ => false, 
                  val outputs: Seq[String] = Nil){
 
-    def execute(output: String) = {
+    def execute(output: File) = {
         if(command.toString != "[]")
-            command #>> new File(output) !
+            command #>> output !
         else
             println("Empty experiment can't be executed")
     }
 
     def success() = command.! == 0
 
-    def extractResultsTo(workingPath: String, outputPath: String, ext: String){
+    def extractResultsTo(workingDir: File, outputDir: File, ext: String){
         for(file <- outputs){
             println(file)
             val splitted = file.split(".")
-            new File(workingPath + '/' + file) #> 
-                new File(outputPath + '/' + splitted(0) + '_' + ext + '.' + splitted(1)) !
+            new File(workingDir, file) #> 
+                new File(outputDir, splitted(0) + '_' + ext + '.' + splitted(1)) !
         }
     }
 }
@@ -68,7 +68,7 @@ object Experiment{
         new Experiment(name, toProcessBuilder(commands), accept, outputs)
     }
 
-    def fromFile(file: String, cwd: String = ".") = {
+    def fromFile(file: File, cwd: String = ".") = {
         val lines = Source.fromFile(file).getLines.toStream
         fromStream(lines, EasyIO.getShortFileName(file), cwd)
     }

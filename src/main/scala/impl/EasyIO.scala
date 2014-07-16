@@ -19,15 +19,12 @@ object EasyIO{
         }
     }
 
-    def listExtensions(dir: String, ext: String) = 
-        new File(dir).list().filter(_.endsWith("." + ext)).toIterator.map(dir + '/' + _)
+    def listExtensions(dir: File, ext: String) = 
+        dir.listFiles.filter(_.getName.endsWith("." + ext)).toIterator
 
-    def fileExists(file: String) = new File(file).exists
+    def insureDirExists(dir: File) =
+        if(!dir.exists) scala.sys.process.Process(Seq("mkdir", dir.getPath)).!
 
-    def insureDirExists(dir: String) =
-        if(!fileExists(dir))
-            scala.sys.process.Process(Seq("mkdir", dir)).!
-
-    def getShortFileName(file: String) = file.split("/").last.split("\\.")(0)
+    def getShortFileName(file: File) = file.getName.split("/").last.split("\\.")(0)
 
 }
