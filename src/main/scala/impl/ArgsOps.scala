@@ -29,7 +29,6 @@ sealed case class StringParam(override val name: String, val value: String) exte
 sealed case class FlagParam(override val name: String, val value: Boolean = false) extends OptionalParam(name)
 
 object ArgsOps {
-    def apply(ops: OptionalParam*)() = new ArgsOpsParser(ops.map(_.toPair).toMap)
 
     case class OptionWithoutExpectedParam(name: String) extends Exception
     case class UnknownParam(name: String) extends Exception
@@ -61,6 +60,10 @@ object ArgsOps {
         }
 
         def <<|(args: Array[String]) = parse(args)
+    }
+
+    object ArgsOpsParser {
+        def apply(ops: OptionalParam*) = new ArgsOpsParser(ops.map(_.toPair).toMap)
     }
 
     implicit def asInt(op: OptionalParam) = op match { case IntParam(_, i) => i }

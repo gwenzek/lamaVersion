@@ -6,7 +6,7 @@ import org.scalatest.FunSuite
 class ArgsOpsTest extends FunSuite {
     import ArgsOps._
 
-    val parser = ArgsOps("someInt" -> 4, "someFlag", "someWord" -> "hello")
+    val parser = ArgsOpsParser("someInt" -> 4, "someFlag", "someWord" -> "hello")
 
     test("the ArgsOps parser rejects unknow options") {
         intercept[UnknownParam](parser <<| Array("-unknown"))
