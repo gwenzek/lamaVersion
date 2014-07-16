@@ -5,10 +5,11 @@ import org.joda.time.DateTime
 import org.joda.time.format._
 import java.io.File
 import com.lamaVersion.impl.EasyIO._
+import com.lamaVersion.impl.ArgsOps._
 
 
 case class Commit(hash: String, date: DateTime){
-    def shortHash() = hash.substring(0, 8)
+    def shortHash = hash.substring(0, 8)
 
     def toShortString() = Commit.simpleFormat.print(date) + '_' + shortHash
 }
@@ -44,11 +45,13 @@ object Commit{
 }
 
 object Manager {
+
     def main(args: Array[String]) {
-        if (args.length < 3) println("Expect : gitPath experimentPath resultPath")
+        val argsOps = ArgsOpsParser("lazy") <<| args
+        if (argsOps.args.length < 3) println("Expect 3 args: gitPath experimentPath resultPath")
         else{
             val manager = new Manager(new File(args(0)), new File(args(1)), new File(args(2)))
-            manager.executeAll()
+            manager.executeAll(argsOps("lazy"))
         }
     }
 
@@ -110,7 +113,7 @@ class Manager(gitDir: File, val experimentDir: File, val resultDir: File) {
                 executeOnCommit(exp, c, lazylazy)
             }
         }
-        switchToHead
+        switchToHead()
     }
 }
 
