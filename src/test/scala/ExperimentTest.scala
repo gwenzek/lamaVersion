@@ -19,13 +19,15 @@ class ExperimentTest extends FunSuite {
         assert(expLoaded.command.toString == ("ls" ### "echo \"Hello world\" > HelloWorld.txt").toString)
     }
 
-    test("the experiment parser grabs date bounds and excluded hashs correctly") {
+    test("the experiment parser grabs date bounds, included commits and excluded commits correctly") {
+        // # RANGE
         // # BEGIN: Thu Jun 26 15:40:09 2014 +0200
         // # END: Thu Jul 10 12:20:40 2014 +0200
         val toSoon = Commit("toSoon_fzljfozjfp", new DateTime(2014, 4, 21, 17, 32))
         val toLate = Commit("toLate_fzljfozjfp", new DateTime(2014, 8, 8, 8, 8))
         val inTime = Commit("inTime_fzljfozjfp", new DateTime(2014, 7, 5, 15, 30))
         val excluded = Commit("e19dfbf4ac549e591069f5a95d9cecdc1e07a663", new DateTime(2014, 7, 5, 15, 30))
+        val included = Commit("cc3beabc948fc8976df61c7037e7646de166ed71", new DateTime(2014, 8, 8, 8, 8))
         assert(expLoaded.accept(toSoon) == false)
         assert(expLoaded.accept(toLate) == false)
         assert(expLoaded.accept(inTime) == true)
